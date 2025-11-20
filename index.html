@@ -1,0 +1,279 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>bvbfoxx github page</title>
+
+    <style>
+        body {
+            margin: 0;
+            background: #c0d8ff;
+            font-family: Tahoma, Arial;
+            overflow: hidden;
+        }
+
+        #windowBox {
+            position: absolute;
+            width: 880px;
+            background: #e9f2ff;
+            border: 2px solid #3b6ea5;
+            user-select: none;
+        }
+
+        .topbar {
+            background: linear-gradient(#0b63a8, #064a86);
+            color: white;
+            padding: 7px 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: move;
+        }
+
+        .yellow-dot {
+            width: 11px;
+            height: 11px;
+            background: #ffd24d;
+            border: 1px solid rgba(0, 0, 0, .25);
+            border-radius: 2px;
+            margin-right: 8px;
+        }
+
+        #closeBtn {
+            width: 16px;
+            height: 16px;
+            text-align: center;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 16px;
+            border-radius: 2px;
+        }
+
+        #closeBtn:hover {
+            background: #a00;
+        }
+
+        .content-area {
+            padding: 16px;
+            display: flex;
+            gap: 15px;
+        }
+
+        .profileCard {
+            width: 260px;
+            background: white;
+            border: 1px solid #9bb7de;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .pfp {
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+            border: 1px solid #9bb7de;
+            border-radius: 4px;
+        }
+
+        .reposBox {
+            flex: 1;
+            background: white;
+            padding: 10px;
+            border: 1px solid #9bb7de;
+            overflow-y: auto;
+            max-height: 500px;
+        }
+
+        .repoItem {
+            border-top: 1px solid #e0edf9;
+            padding: 8px 3px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+
+        .tinyfooter {
+            background: #d9ecff;
+            padding: 10px;
+            font-size: 12px;
+            border-top: 1px solid #9bb7de;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        a.gitlink {
+            color: #064a86;
+            text-decoration: none;
+            font-weight: bold;
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <div id="windowBox">
+
+        <div class="topbar" id="dragBar">
+            <div style="display:flex;align-items:center;">
+                <div class="yellow-dot"></div>
+                <div>bvbfoxx</div>
+            </div>
+            <div id="closeBtn">X</div>
+        </div>
+
+        <div class="content-area">
+            <div class="profileCard">
+                <img class="pfp" id="pfpImg">
+                <div style="margin-top:8px;font-weight:bold;">@bvbfoxx</div>
+                <div id="bioTxt" style="margin-top:7px;font-size:13px;color:#234f72;">Loading…</div>
+            </div>
+
+            <div class="reposBox">
+                <h3 style="margin:2px 0 8px 0;color:#07385a;font-size:15px;">Repositories</h3>
+
+                <!-- sorting -->
+                <select id="sorter" style="margin-bottom:10px;">
+                    <option value="stars">Sort by stars</option>
+                    <option value="name">Sort by name</option>
+                </select>
+
+                <div id="repoList"></div>
+            </div>
+        </div>
+
+        <div class="tinyfooter">
+            <div></div>
+            <a class="gitlink" href="https://github.com/bvbfoxx" target="_blank">GitHub</a>
+        </div>
+
+    </div>
+
+    <script>
+        const box = document.getElementById("windowBox");
+        const drag = document.getElementById("dragBar");
+        const closeBtn = document.getElementById("closeBtn");
+
+        // center at first load
+        window.onload = () => {
+            const winW = window.innerWidth;
+            const winH = window.innerHeight;
+
+            const boxW = box.offsetWidth;
+            const boxH = box.offsetHeight;
+
+            const safeW = Math.min(boxW, winW);
+            const safeH = Math.min(boxH, winH);
+
+            let x = (winW - safeW) / 2;
+            let y = (winH - safeH) / 2;
+
+            box.style.left = x + "px";
+            box.style.top = y + "px";
+        };
+
+
+        // load profile
+        fetch("https://api.github.com/users/bvbfoxx")
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById("pfpImg").src = data.avatar_url;
+                document.getElementById("bioTxt").innerText = data.bio || "";
+            });
+
+        // load repos
+        let repos = [];
+        const repoList = document.getElementById("repoList");
+        const sorter = document.getElementById("sorter");
+
+        function showRepos(sortBy) {
+            repoList.innerHTML = "";
+
+            let r = repos.slice(); // copy
+
+            if (sortBy === "stars") {
+                r.sort((a, b) => b.stargazers_count - a.stargazers_count);
+            } else {
+                r.sort((a, b) => a.name.localeCompare(b.name));
+            }
+
+            r.forEach(repo => {
+                let d = document.createElement("div");
+                d.className = "repoItem";
+                d.innerHTML = `
+                <div>
+                    <a href="${repo.html_url}" target="_blank" style="font-weight:bold;color:#0b63a8;text-decoration:none;">${repo.name}</a>
+                    <div style="font-size:12px;color:#234f72;">${repo.description || ""}</div>
+                </div>
+                <div style="white-space:nowrap;">★ ${repo.stargazers_count}</div>
+            `;
+                repoList.appendChild(d);
+            });
+            keepWindowFullyVisible();
+        }
+
+        fetch("https://api.github.com/users/bvbfoxx/repos?per_page=100")
+            .then(r => r.json())
+            .then(rs => {
+                repos = rs;
+                showRepos("stars");
+            });
+
+        sorter.addEventListener("change", () => showRepos(sorter.value));
+
+
+        // dragging (no bounds)
+        let isDown = false, offX = 0, offY = 0;
+
+        drag.addEventListener("mousedown", e => {
+            isDown = true;
+            offX = e.clientX - box.offsetLeft;
+            offY = e.clientY - box.offsetTop;
+        });
+
+        document.addEventListener("mousemove", e => {
+            if (!isDown) return;
+            box.style.left = (e.clientX - offX) + "px";
+            box.style.top = (e.clientY - offY) + "px";
+        });
+
+        document.addEventListener("mouseup", () => isDown = false);
+
+
+        // close + respawn random
+        closeBtn.addEventListener("click", () => {
+            box.style.display = "none";
+            setTimeout(() => {
+                let x = Math.random() * (window.innerWidth - box.offsetWidth);
+                let y = Math.random() * (window.innerHeight - box.offsetHeight);
+                box.style.left = x + "px";
+                box.style.top = y + "px";
+                box.style.display = "block";
+            }, 200);
+        });
+
+        function keepWindowFullyVisible() {
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+
+            const bw = box.offsetWidth;
+            const bh = box.offsetHeight;
+
+            let x = parseInt(box.style.left);
+            let y = parseInt(box.style.top);
+
+            if (x + bw > w) x = w - bw;
+            if (y + bh > h) y = h - bh;
+            if (x < 0) x = 0;
+            if (y < 0) y = 0;
+
+            box.style.left = x + "px";
+            box.style.top = y + "px";
+        }
+
+    </script>
+
+</body>
+
+</html>
